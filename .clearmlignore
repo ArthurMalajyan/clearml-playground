@@ -1,0 +1,4 @@
+uploader/
+datasets/
+.venv/
+artifacts/

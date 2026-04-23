@@ -1,0 +1,30 @@
+# Available values:
+# - local_no_clearml: run locally without creating a ClearML task
+# - local_clearml: run locally and log metrics/artifacts to ClearML
+# - remote_clearml: run through a ClearML agent on the selected queue
+run_mode: local_no_clearml
+
+clearml:
+  project_name: ""
+  task_name: BWResNet18_Training
+  queue_name: ""
+  docker_image: ""
+  docker_arguments: --ipc=host --gpus all
+
+data:
+  local_dataset_path: ""
+  dataset_id: ""
+
+training:
+  batch_size: 64
+  num_epochs: 5
+  lr: 0.001
+  momentum: 0.9
+  num_workers: 2
+  image_size: 224
+  mean: 0.5
+  std: 0.5
+  pretrained: true
+  hid_lay_size: 100
+  dropout: 0.1
+  artifacts_dir: artifacts
