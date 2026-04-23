@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any
 
-from clearml import Dataset, Task
+from clearml import Dataset, Model, Task
 from omegaconf import OmegaConf
 
 from base_model.data import MNISTWrapper
@@ -36,6 +36,20 @@ def _resolve_dataset_path(data_config: dict[str, Any]) -> Path:
         return _download_dataset(dataset_id)
 
     raise ValueError("Set either 'data.local_dataset_path' or 'data.dataset_id' in run_config.yaml.")
+
+
+def _resolve_initial_weights_path(model_config: dict[str, Any]) -> str | None:
+    """Resolve an optional initial checkpoint from local disk or ClearML Model id."""
+    local_weights_path = str(model_config.get("local_weights_path", "")).strip()
+    if local_weights_path:
+        return str(Path(local_weights_path).expanduser().resolve())
+
+    clearml_model_id = str(model_config.get("clearml_model_id", "")).strip()
+    if clearml_model_id:
+        model = Model(model_id=clearml_model_id)
+        return str(Path(model.get_local_copy(raise_on_error=True, force_download=True)))
+
+    return None
 
 
 def _init_task_if_needed(config: dict[str, Any]) -> Task | None:
@@ -74,6 +88,8 @@ def main() -> None:
 
     dataset_path = _resolve_dataset_path(config["data"])
     training_config = config["training"]
+    model_config = config["model"]
+    initial_weights_path = _resolve_initial_weights_path(model_config)
 
     dataset = MNISTWrapper(data_path=dataset_path).get_dataset(
         image_size=training_config["image_size"],
@@ -90,6 +106,7 @@ def main() -> None:
         hid_lay_size=training_config["hid_lay_size"],
         dropout=training_config["dropout"],
         artifacts_dir=training_config["artifacts_dir"],
+        weights_path=initial_weights_path,
     )
     best_model_path = trainer.train_function(
         dataset=dataset,

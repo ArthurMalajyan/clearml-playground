@@ -36,7 +36,9 @@ class BWResNet18Wrapper:
         self.to_device(self.device)
 
         if weights_path:
-            checkpoint_path = self.artifacts_dir / weights_path
+            checkpoint_path = Path(weights_path)
+            if not checkpoint_path.is_absolute():
+                checkpoint_path = self.artifacts_dir / checkpoint_path
             if checkpoint_path.exists():
                 checkpoint = torch.load(checkpoint_path, map_location=self.device)
                 self._load_model_state(checkpoint)

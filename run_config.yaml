@@ -2,7 +2,7 @@
 # - local_no_clearml: run locally without creating a ClearML task
 # - local_clearml: run locally and log metrics/artifacts to ClearML
 # - remote_clearml: run through a ClearML agent on the selected queue
-run_mode: local_no_clearml
+run_mode: remote_clearml
 
 clearml:
   project_name: Custom/MNIST
@@ -13,7 +13,11 @@ clearml:
 
 data:
   local_dataset_path: ""
-  dataset_id: df6e95d13caf49dabffaa66070c3ce59
+  dataset_id: ""
+
+model:
+  local_weights_path: ""
+  clearml_model_id: ""  # optional: download this ClearML model and use it as the initial checkpoint
 
 training:
   batch_size: 64
