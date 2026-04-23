@@ -99,6 +99,8 @@ def main() -> None:
         batch_size=training_config["batch_size"],
         num_workers=training_config["num_workers"],
         print_metrics=config["run_mode"] == "local_no_clearml",
+        resume_training=training_config["resume_training"],
+        resume_task_id=training_config["resume_task_id"],
     )
 
     if task is not None:
