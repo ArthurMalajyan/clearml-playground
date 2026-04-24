@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Any, Dict
 
 import torch
-from clearml import Task
+from clearml import Logger, OutputModel, Task
 from torch import nn
 from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DataLoader, Dataset
@@ -73,25 +73,26 @@ class BWResNet18Wrapper:
         return latest_path, latest_epoch
 
     def _get_task_checkpoint(self, task: Task | None) -> tuple[Path | None, int]:
-        """Download the most recent epoch checkpoint artifact from ClearML."""
+        """Download the most recent epoch checkpoint output model from ClearML."""
         if task is None:
             return None, -1
 
         task.reload()
-        latest_artifact = None
+        output_models = task.models["output"]
+        latest_output_model = None
         latest_epoch = -1
 
-        for artifact_name, artifact in task.artifacts.items():
-            epoch = self._extract_epoch_from_name(artifact_name)
+        for model_name in output_models.keys():
+            epoch = self._extract_epoch_from_name(model_name)
             if epoch is None or epoch <= latest_epoch:
                 continue
             latest_epoch = epoch
-            latest_artifact = artifact
+            latest_output_model = output_models[model_name]
 
-        if latest_artifact is None:
+        if latest_output_model is None:
             return None, -1
 
-        downloaded_checkpoint = Path(latest_artifact.get_local_copy(raise_on_error=True, force_download=True))
+        downloaded_checkpoint = Path(latest_output_model.get_local_copy(raise_on_error=True, force_download=True))
         local_checkpoint = self.artifacts_dir / f"model_{latest_epoch}.pth"
         if downloaded_checkpoint != local_checkpoint:
             shutil.copy2(downloaded_checkpoint, local_checkpoint)
@@ -152,7 +153,7 @@ class BWResNet18Wrapper:
     ) -> Path:
         """Run a standard supervised training loop and return the best checkpoint path."""
         task = Task.current_task()
-        logger = task.get_logger() if task is not None else None
+        logger = Logger.current_logger() if task is not None else None
 
         train_loader = DataLoader(
             dataset["train"],
@@ -177,6 +178,8 @@ class BWResNet18Wrapper:
         start_epoch = 0
         best_accuracy = -1.0
         best_model_path = self.artifacts_dir / "best_model.pth"
+        epoch_output_models: dict[str, OutputModel] = {}
+        best_output_model = OutputModel(task=task, name="best_model") if task is not None else None
         if resume_training:
             start_epoch, best_accuracy = self._resume_training_state(
                 optimizer=optimizer,
@@ -258,6 +261,13 @@ class BWResNet18Wrapper:
                     },
                     best_model_path,
                 )
+                if best_output_model is not None:
+                    best_output_model.update_weights(
+                        weights_filename=str(best_model_path),
+                        target_filename=best_model_path.name,
+                        auto_delete_file=False,
+                        iteration=epoch_num,
+                    )
 
             checkpoint_path = self.artifacts_dir / f"model_{epoch_num}.pth"
             torch.save(
@@ -271,7 +281,17 @@ class BWResNet18Wrapper:
                 checkpoint_path,
             )
             if task is not None:
-                task.upload_artifact(f"model_{epoch_num}", artifact_object=str(checkpoint_path))
+                model_name = f"model_{epoch_num}"
+                output_model = epoch_output_models.get(model_name)
+                if output_model is None:
+                    output_model = OutputModel(task=task, name=model_name)
+                    epoch_output_models[model_name] = output_model
+                output_model.update_weights(
+                    weights_filename=str(checkpoint_path),
+                    target_filename=checkpoint_path.name,
+                    auto_delete_file=False,
+                    iteration=epoch_num,
+                )
 
         return best_model_path
 

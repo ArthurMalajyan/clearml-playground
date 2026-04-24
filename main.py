@@ -63,6 +63,7 @@ def _init_task_if_needed(config: dict[str, Any]) -> Task | None:
     task = Task.init(
         project_name=clearml_config["project_name"],
         task_name=clearml_config["task_name"],
+        auto_connect_frameworks={"pytorch": False},
     )
     task.connect(config, name="run_config")
 
@@ -82,14 +83,16 @@ def _init_task_if_needed(config: dict[str, Any]) -> Task | None:
     return task
 
 
-def main() -> None:
-    config = _load_config(CONFIG_PATH)
-    task = _init_task_if_needed(config)
+def run_training(config_path: Path = CONFIG_PATH, initialize_task: bool = True) -> Path:
+    """Load config and execute the training workflow."""
+    config = _load_config(config_path)
+    task = _init_task_if_needed(config) if initialize_task else Task.current_task()
 
     dataset_path = _resolve_dataset_path(config["data"])
     training_config = config["training"]
     model_config = config["model"]
     initial_weights_path = _resolve_initial_weights_path(model_config)
+    print(f"Using initial weights from: {initial_weights_path}")
 
     dataset = MNISTWrapper(data_path=dataset_path).get_dataset(
         image_size=training_config["image_size"],
@@ -119,10 +122,11 @@ def main() -> None:
         resume_training=training_config["resume_training"],
         resume_task_id=training_config["resume_task_id"],
     )
+    return best_model_path
 
-    if task is not None:
-        task.upload_artifact("best_model", artifact_object=str(best_model_path))
 
+def main() -> None:
+    run_training(CONFIG_PATH, initialize_task=True)
 
 if __name__ == "__main__":
     main()
