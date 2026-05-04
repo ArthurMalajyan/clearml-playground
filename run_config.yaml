@@ -13,18 +13,25 @@ clearml:
 
 data:
   local_dataset_path: ""
-  dataset_id: ""
+  dataset_id: df6e95d13caf49dabffaa66070c3ce59
 
 model:
   local_weights_path: ""
   clearml_model_id: ""  # optional: download this ClearML model and use it as the initial checkpoint
+
+inference:
+  split: validation
+  batch_size: 64
+  num_workers: 2
+  run_mode: "remote_clearml"  # optional override: local_no_clearml, local_clearml, or remote_clearml; empty uses top-level run_mode
+  task_name: BWResNet18_Inference
 
 training:
   batch_size: 64
   num_epochs: 5
   lr: 0.001
   momentum: 0.9
-  resume_training: True
+  resume_training: False
   resume_task_id: ""  # optional: use a specific ClearML task id as the resume source
   num_workers: 2
   image_size: 224
